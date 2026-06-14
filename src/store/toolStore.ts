@@ -28,7 +28,12 @@ function loadFromStorage(): Tool[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed as Tool[];
+    if (Array.isArray(parsed)) {
+      return (parsed as Tool[]).map((t) => ({
+        ...t,
+        borrowRecords: t.borrowRecords ?? [],
+      }));
+    }
     return [];
   } catch {
     return [];
@@ -205,7 +210,8 @@ export const useToolStore = create<ToolStore>((set, get) => ({
     let hasChanges = false;
 
     const nextTools = tools.map((tool) => {
-      const updatedRecords = tool.borrowRecords.map((record) => {
+      const records = tool.borrowRecords ?? [];
+      const updatedRecords = records.map((record) => {
         if (record.status === "borrowed") {
           const expectedDate = new Date(record.expectedReturnDate);
           expectedDate.setHours(23, 59, 59, 999);
@@ -217,7 +223,7 @@ export const useToolStore = create<ToolStore>((set, get) => ({
         return record;
       });
 
-      if (updatedRecords.some((r, i) => r !== tool.borrowRecords[i])) {
+      if (updatedRecords.some((r, i) => r !== records[i]) || records !== tool.borrowRecords) {
         return { ...tool, borrowRecords: updatedRecords, updatedAt: now.toISOString() };
       }
       return tool;

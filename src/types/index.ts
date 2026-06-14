@@ -1,6 +1,8 @@
 export type ToolCategory = "manual" | "electric" | "consumable" | "other";
 export type MaintenanceType = "charge" | "battery" | "none";
 export type BorrowStatus = "borrowed" | "returned" | "overdue";
+export type ConsumableUnit = "piece" | "meter" | "roll" | "box" | "battery" | "packet" | "kg" | "liter" | "other";
+export type ConsumableCategory = "drill_bit" | "tape" | "battery" | "screw" | "glue" | "abrasive" | "paint" | "cleaning" | "other";
 
 export interface Tool {
   id: string;
@@ -58,4 +60,89 @@ export const EMOJI_OPTIONS = [
 
 export function getCategoryInfo(category: ToolCategory): CategoryInfo {
   return CATEGORY_LIST.find((c) => c.key === category) ?? CATEGORY_LIST[3];
+}
+
+export interface Consumable {
+  id: string;
+  name: string;
+  category: ConsumableCategory;
+  model: string;
+  currentStock: number;
+  minStockThreshold: number;
+  unit: ConsumableUnit;
+  location: string;
+  purchaseDate: string;
+  unitPrice?: number;
+  notes: string;
+  emojiIcon: string;
+  createdAt: string;
+  updatedAt: string;
+  usageRecords: ConsumableUsageRecord[];
+}
+
+export interface ConsumableUsageRecord {
+  id: string;
+  amount: number;
+  usageDate: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type NewConsumableInput = Omit<Consumable, "id" | "createdAt" | "updatedAt" | "usageRecords">;
+export type NewConsumableUsageInput = Omit<ConsumableUsageRecord, "id" | "createdAt">;
+
+export interface ConsumableCategoryInfo {
+  key: ConsumableCategory;
+  label: string;
+  emoji: string;
+  color: string;
+  bgColor: string;
+}
+
+export interface ConsumableUnitInfo {
+  key: ConsumableUnit;
+  label: string;
+  shortLabel: string;
+}
+
+export const CONSUMABLE_CATEGORY_LIST: ConsumableCategoryInfo[] = [
+  { key: "drill_bit", label: "钻头批头", emoji: "🔩", color: "text-steel-700", bgColor: "bg-steel-200" },
+  { key: "tape", label: "胶带胶贴", emoji: "🩹", color: "text-wood-700", bgColor: "bg-wood-200" },
+  { key: "battery", label: "电池电源", emoji: "🔋", color: "text-safety-orangeDark", bgColor: "bg-safety-orange/15" },
+  { key: "screw", label: "螺丝螺母", emoji: "⚙️", color: "text-steel-600", bgColor: "bg-steel-100" },
+  { key: "glue", label: "胶水粘合剂", emoji: "🧴", color: "text-wood-600", bgColor: "bg-wood-100" },
+  { key: "abrasive", label: "砂纸磨具", emoji: "✨", color: "text-status-warning", bgColor: "bg-status-warning/15" },
+  { key: "paint", label: "涂料油漆", emoji: "🎨", color: "text-wood-800", bgColor: "bg-wood-100" },
+  { key: "cleaning", label: "清洁用品", emoji: "🧹", color: "text-status-good", bgColor: "bg-status-good/15" },
+  { key: "other", label: "其他耗材", emoji: "📦", color: "text-wood-500", bgColor: "bg-wood-50" },
+];
+
+export const CONSUMABLE_UNIT_LIST: ConsumableUnitInfo[] = [
+  { key: "piece", label: "个/件", shortLabel: "个" },
+  { key: "meter", label: "米", shortLabel: "米" },
+  { key: "roll", label: "卷", shortLabel: "卷" },
+  { key: "box", label: "盒", shortLabel: "盒" },
+  { key: "battery", label: "节(电池)", shortLabel: "节" },
+  { key: "packet", label: "包/袋", shortLabel: "包" },
+  { key: "kg", label: "千克", shortLabel: "kg" },
+  { key: "liter", label: "升", shortLabel: "L" },
+  { key: "other", label: "其他", shortLabel: "单位" },
+];
+
+export const CONSUMABLE_EMOJI_OPTIONS = [
+  "🔩", "🩹", "🔋", "⚙️", "🧴", "✨", "🎨", "🧹",
+  "📦", "🔌", "💡", "🧵", "🖇️", "📎", "✏️", "🖊️",
+  "🧻", "🧽", "🧯", "🧰", "🔧", "🪛", "🔨", "⚡",
+];
+
+export function getConsumableCategoryInfo(category: ConsumableCategory): ConsumableCategoryInfo {
+  return CONSUMABLE_CATEGORY_LIST.find((c) => c.key === category) ?? CONSUMABLE_CATEGORY_LIST[8];
+}
+
+export function getConsumableUnitInfo(unit: ConsumableUnit): ConsumableUnitInfo {
+  return CONSUMABLE_UNIT_LIST.find((u) => u.key === unit) ?? CONSUMABLE_UNIT_LIST[8];
+}
+
+export function isLowStock(consumable: Consumable): boolean {
+  return consumable.currentStock <= consumable.minStockThreshold;
 }
