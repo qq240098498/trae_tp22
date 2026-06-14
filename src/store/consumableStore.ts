@@ -128,6 +128,10 @@ export const useConsumableStore = create<ConsumableStore>((set, get) => ({
     const idx = consumables.findIndex((c) => c.id === consumableId);
     if (idx === -1) return null;
 
+    const consumable = consumables[idx];
+    if (input.amount <= 0) return null;
+    if (input.amount > consumable.currentStock) return null;
+
     const now = new Date().toISOString();
     const newRecord: ConsumableUsageRecord = {
       ...input,
@@ -135,7 +139,6 @@ export const useConsumableStore = create<ConsumableStore>((set, get) => ({
       createdAt: now,
     };
 
-    const consumable = consumables[idx];
     const updatedConsumable: Consumable = {
       ...consumable,
       currentStock: Math.max(0, consumable.currentStock - input.amount),

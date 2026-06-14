@@ -137,7 +137,7 @@ export default function ConsumableDetailPage() {
       consumable.unit === "liter"
         ? 0.5
         : 1;
-    setUsageAmount(step);
+    setUsageAmount(Math.min(step, consumable.currentStock > 0 ? step : 0));
     setUsageDate(formatDateInput());
     setUsageNotes("");
     setShowUsageForm(true);
@@ -146,14 +146,17 @@ export default function ConsumableDetailPage() {
   function handleUsageSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (usageAmount <= 0) return;
+    if (usageAmount > consumable.currentStock) return;
 
-    addUsageRecord(consumable.id, {
+    const result = addUsageRecord(consumable.id, {
       amount: usageAmount,
       usageDate,
       notes: usageNotes.trim() || undefined,
     });
 
-    setShowUsageForm(false);
+    if (result) {
+      setShowUsageForm(false);
+    }
   }
 
   function openRestockForm() {
@@ -440,15 +443,22 @@ export default function ConsumableDetailPage() {
             <button
               type="button"
               onClick={openUsageForm}
-              className="p-5 rounded-xl border-2 border-wood-200 bg-white hover:border-wood-400 hover:bg-wood-50 transition-all group text-left"
+              disabled={consumable.currentStock <= 0}
+              className="p-5 rounded-xl border-2 border-wood-200 bg-white hover:border-wood-400 hover:bg-wood-50 transition-all group text-left disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-wood-200 disabled:hover:bg-white"
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-status-warning/15 text-status-warning flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-status-warning/15 text-status-warning flex items-center justify-center group-hover:scale-110 transition-transform group-disabled:group-hover:scale-100">
                   <Minus size={20} strokeWidth={2.4} />
                 </div>
                 <div>
-                  <p className="font-display text-lg text-wood-900">登记使用</p>
-                  <p className="text-xs text-wood-500">记录消耗，自动扣减库存</p>
+                  <p className="font-display text-lg text-wood-900">
+                    {consumable.currentStock <= 0 ? "库存为空" : "登记使用"}
+                  </p>
+                  <p className="text-xs text-wood-500">
+                    {consumable.currentStock <= 0
+                      ? "请先补充库存"
+                      : "记录消耗，自动扣减库存"}
+                  </p>
                 </div>
               </div>
             </button>
@@ -662,7 +672,7 @@ export default function ConsumableDetailPage() {
                 <label className="input-label">
                   消耗数量 <span className="text-status-alert">*</span>
                   <span className="ml-1 text-wood-400 font-normal">
-                    （{unitInfo.shortLabel}）
+                    （{unitInfo.shortLabel}，最大 {displayStock}{unitInfo.shortLabel}）
                   </span>
                 </label>
                 <div className="flex items-center gap-3">
@@ -671,43 +681,77 @@ export default function ConsumableDetailPage() {
                     onClick={() =>
                       setUsageAmount((v) => Math.max(step, Number((v - step).toFixed(2))))
                     }
-                    className="w-12 h-12 rounded-xl border-2 border-wood-200 bg-white hover:border-safety-orange hover:bg-safety-orange/5 text-wood-700 text-2xl font-bold flex items-center justify-center transition-colors shrink-0"
+                    disabled={usageAmount <= step}
+                    className="w-12 h-12 rounded-xl border-2 border-wood-200 bg-white hover:border-safety-orange hover:bg-safety-orange/5 text-wood-700 text-2xl font-bold flex items-center justify-center transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-wood-200 disabled:hover:bg-white"
                   >
                     −
                   </button>
                   <input
                     type="number"
                     min={step}
+                    max={consumable.currentStock}
                     step={step}
                     value={usageAmount}
                     onChange={(e) =>
                       setUsageAmount(
                         e.target.value === ""
                           ? step
-                          : Math.max(step, parseFloat(e.target.value) || step)
+                          : Math.min(
+                              consumable.currentStock,
+                              Math.max(step, parseFloat(e.target.value) || step)
+                            )
                       )
                     }
-                    className="input-field !text-center !text-2xl !font-display flex-1"
+                    className={classNames(
+                      "input-field !text-center !text-2xl !font-display flex-1",
+                      usageAmount > consumable.currentStock &&
+                        "!border-status-alert !ring-status-alert/20"
+                    )}
                   />
                   <button
                     type="button"
                     onClick={() =>
-                      setUsageAmount((v) => Number((v + step).toFixed(2)))
+                      setUsageAmount((v) =>
+                        Number(Math.min(consumable.currentStock, v + step).toFixed(2))
+                      )
                     }
-                    className="w-12 h-12 rounded-xl border-2 border-wood-200 bg-white hover:border-safety-orange hover:bg-safety-orange/5 text-wood-700 text-2xl font-bold flex items-center justify-center transition-colors shrink-0"
+                    disabled={usageAmount + step > consumable.currentStock}
+                    className="w-12 h-12 rounded-xl border-2 border-wood-200 bg-white hover:border-safety-orange hover:bg-safety-orange/5 text-wood-700 text-2xl font-bold flex items-center justify-center transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-wood-200 disabled:hover:bg-white"
                   >
                     +
                   </button>
                 </div>
-                <p className="text-[11px] text-wood-500 mt-2 text-center">
-                  当前库存：{displayStock} → 使用后剩余：
-                  <span className="font-bold text-status-warning">
-                    {Number((consumable.currentStock - usageAmount).toFixed(2))}
+                <p
+                  className={classNames(
+                    "text-[11px] mt-2 text-center font-medium",
+                    usageAmount > consumable.currentStock
+                      ? "text-status-alert"
+                      : "text-wood-500"
+                  )}
+                >
+                  当前库存：{displayStock}{unitInfo.shortLabel} → 使用后剩余：
+                  <span
+                    className={classNames(
+                      "font-bold",
+                      consumable.currentStock - usageAmount < 0
+                        ? "text-status-alert"
+                        : consumable.currentStock - usageAmount <= consumable.minStockThreshold
+                        ? "text-status-warning"
+                        : "text-status-good"
+                    )}
+                  >
+                    {Math.max(0, Number((consumable.currentStock - usageAmount).toFixed(2)))}
                   </span>
                   {unitInfo.shortLabel}
-                  {consumable.currentStock - usageAmount <= consumable.minStockThreshold && (
-                    <span className="ml-1.5 text-status-alert font-bold">⚠ 将触发补货提醒</span>
+                  {consumable.currentStock - usageAmount < 0 && (
+                    <span className="ml-1.5 text-status-alert font-bold">⚠ 超过库存！</span>
                   )}
+                  {consumable.currentStock - usageAmount >= 0 &&
+                    consumable.currentStock - usageAmount <= consumable.minStockThreshold && (
+                      <span className="ml-1.5 text-status-alert font-bold">
+                        ⚠ 将触发补货提醒
+                      </span>
+                    )}
                 </p>
               </div>
 
@@ -742,10 +786,14 @@ export default function ConsumableDetailPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={usageAmount <= 0}
+                  disabled={usageAmount <= 0 || usageAmount > consumable.currentStock}
                   className="btn-primary !bg-status-warning !text-white border-status-warning hover:bg-status-warning/90 disabled:opacity-60"
                 >
-                  确认登记
+                  {consumable.currentStock <= 0
+                    ? "库存为空"
+                    : usageAmount > consumable.currentStock
+                    ? "超过可用库存"
+                    : "确认登记"}
                 </button>
               </div>
             </form>
