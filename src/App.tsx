@@ -9,20 +9,27 @@ import ConsumableDetailPage from "@/pages/ConsumableDetailPage";
 import TaskListPage from "@/pages/TaskListPage";
 import TaskFormPage from "@/pages/TaskFormPage";
 import TaskDetailPage from "@/pages/TaskDetailPage";
+import CommunityListPage from "@/pages/CommunityListPage";
+import CommunityToolDetailPage from "@/pages/CommunityToolDetailPage";
+import MyCommunityPage from "@/pages/MyCommunityPage";
+import CommunityToolFormPage from "@/pages/CommunityToolFormPage";
 import { useToolStore } from "@/store/toolStore";
 import { useConsumableStore } from "@/store/consumableStore";
 import { useMaintenanceStore } from "@/store/maintenanceStore";
+import { useCommunityStore } from "@/store/communityStore";
 
 export default function App() {
   const hydrateTools = useToolStore((s) => s.hydrate);
   const updateBorrowStatuses = useToolStore((s) => s.updateBorrowStatuses);
   const hydrateConsumables = useConsumableStore((s) => s.hydrate);
   const hydrateTasks = useMaintenanceStore((s) => s.hydrate);
+  const hydrateCommunity = useCommunityStore((s) => s.hydrate);
 
   useEffect(() => {
     hydrateTools();
     hydrateConsumables();
     hydrateTasks();
+    hydrateCommunity();
     updateBorrowStatuses();
 
     const timer = setInterval(() => {
@@ -30,7 +37,7 @@ export default function App() {
     }, 60000);
 
     return () => clearInterval(timer);
-  }, [hydrateTools, hydrateConsumables, hydrateTasks, updateBorrowStatuses]);
+  }, [hydrateTools, hydrateConsumables, hydrateTasks, hydrateCommunity, updateBorrowStatuses]);
 
   return (
     <Router>
@@ -49,6 +56,12 @@ export default function App() {
         <Route path="/task/new" element={<TaskFormPage />} />
         <Route path="/task/:id" element={<TaskDetailPage />} />
         <Route path="/task/:id/edit" element={<TaskFormPage />} />
+
+        <Route path="/community" element={<CommunityListPage />} />
+        <Route path="/community/my" element={<MyCommunityPage />} />
+        <Route path="/community/tool/new" element={<CommunityToolFormPage />} />
+        <Route path="/community/tool/:id" element={<CommunityToolDetailPage />} />
+        <Route path="/community/tool/:id/edit" element={<CommunityToolFormPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { PackagePlus, ArrowLeft, Wrench, Package, ClipboardList } from "lucide-react";
+import { PackagePlus, ArrowLeft, Wrench, Package, ClipboardList, Users } from "lucide-react";
 import { classNames } from "@/utils/format";
 import { useConsumableStore } from "@/store/consumableStore";
 import { useMaintenanceStore } from "@/store/maintenanceStore";
+import { useCommunityStore } from "@/store/communityStore";
 
 
 interface HeaderProps {
@@ -20,9 +21,12 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
     pathname.startsWith("/consumable") || pathname === "/consumables";
   const isTaskRoute =
     pathname.startsWith("/task") || pathname === "/tasks";
+  const isCommunityRoute =
+    pathname.startsWith("/community");
   const isConsumableList = pathname === "/consumables";
   const isTaskList = pathname === "/tasks";
-  const isHome = (pathname === "/" || pathname === "/consumables" || pathname === "/tasks") && !showBack;
+  const isCommunityList = pathname === "/community";
+  const isHome = (pathname === "/" || pathname === "/consumables" || pathname === "/tasks" || pathname === "/community") && !showBack;
 
   const displayTitle = title ?? "家庭工具箱";
 
@@ -34,7 +38,13 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
   const hydrateTasks = useMaintenanceStore((s) => s.hydrate);
   hydrateTasks();
 
-  const backTo = isTaskRoute ? "/tasks" : isConsumableRoute ? "/consumables" : "/";
+  const hydrateCommunity = useCommunityStore((s) => s.hydrate);
+  hydrateCommunity();
+  const pendingRequestCount = useCommunityStore((s) =>
+    s.getBorrowRequests("as_owner").filter((r) => r.status === "pending").length
+  );
+
+  const backTo = isCommunityRoute ? "/community" : isTaskRoute ? "/tasks" : isConsumableRoute ? "/consumables" : "/";
 
   return (
     <header className="sticky top-0 z-40 border-b border-wood-300/50 backdrop-blur-md bg-wood-900/92 text-wood-50 shadow-lg">
@@ -95,7 +105,7 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
           </div>
 
           {/* 模块导航 Tab - 仅在列表页（非详情/非编辑页）显示 */}
-          {(pathname === "/" || pathname === "/consumables" || pathname === "/tasks") && !showBack && (
+          {(pathname === "/" || pathname === "/consumables" || pathname === "/tasks" || pathname === "/community") && !showBack && (
             <nav className="flex gap-1 pb-3 -mt-1">
               <Link
                 to="/"
@@ -140,6 +150,23 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
                 {pendingTaskCount > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-safety-orange text-white text-[11px] font-bold animate-pulse-subtle">
                     {pendingTaskCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to="/community"
+                className={classNames(
+                  "relative flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-medium transition-all",
+                  isCommunityRoute
+                    ? "bg-white/15 text-white shadow-sm"
+                    : "text-wood-300/70 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <Users size={16} strokeWidth={2.2} />
+                邻里社区
+                {pendingRequestCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-safety-orange text-white text-[11px] font-bold animate-pulse-subtle">
+                    {pendingRequestCount}
                   </span>
                 )}
               </Link>

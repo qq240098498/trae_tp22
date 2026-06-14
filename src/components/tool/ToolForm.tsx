@@ -23,6 +23,10 @@ const DEFAULT_FORM: NewToolInput = {
   notes: "",
   images: [],
   emojiIcon: "🔧",
+  availableForCommunity: false,
+  communityDescription: "",
+  communityDeposit: 0,
+  communityMaxDays: 7,
 };
 
 export default function ToolForm({ mode, existingTool }: ToolFormProps) {
@@ -337,6 +341,104 @@ export default function ToolForm({ mode, existingTool }: ToolFormProps) {
           )}
           <span className="text-[11px] text-wood-400">{form.notes.length}/200</span>
         </div>
+      </section>
+
+      {/* 邻里共享 */}
+      <section className="card p-5 sm:p-6">
+        <h2 className="section-title mb-5">
+          <span className="text-xl">🏘️</span>
+          邻里共享
+        </h2>
+
+        <label className="flex items-start gap-3 p-4 rounded-xl bg-status-good/5 border border-status-good/20 cursor-pointer hover:bg-status-good/10 transition mb-4">
+          <input
+            type="checkbox"
+            checked={form.availableForCommunity}
+            onChange={(e) => {
+              const val = e.target.checked;
+              updateField("availableForCommunity", val);
+              if (val && !form.communityDescription) {
+                updateField("communityDescription", "可借给邻居使用");
+              }
+              if (val && (form.communityDeposit === undefined || form.communityDeposit === null)) {
+                updateField("communityDeposit", 0);
+              }
+              if (val && (form.communityMaxDays === undefined || form.communityMaxDays === null)) {
+                updateField("communityMaxDays", 7);
+              }
+            }}
+            className="mt-0.5 w-5 h-5 rounded border-wood-300 text-safety-orange focus:ring-safety-orange/40"
+          />
+          <div className="min-w-0">
+            <p className="font-semibold text-wood-800">
+              愿意借给邻居使用
+            </p>
+            <p className="text-xs text-wood-500 mt-0.5">
+              勾选后此工具将展示在社区共享列表，邻居可申请借用
+            </p>
+          </div>
+        </label>
+
+        {form.availableForCommunity && (
+          <div className="space-y-4 animate-fade-in">
+            <div>
+              <label className="input-label">共享描述</label>
+              <input
+                type="text"
+                value={form.communityDescription ?? ""}
+                onChange={(e) => updateField("communityDescription", e.target.value)}
+                placeholder="例如：可借给邻居使用"
+                className="input-field"
+                maxLength={100}
+              />
+              <p className="text-[11px] text-wood-500 mt-1.5 px-1">
+                简单描述工具状况和使用注意事项（选填）
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+              <div>
+                <label className="input-label">押金（元）</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.communityDeposit ?? 0}
+                  onChange={(e) =>
+                    updateField(
+                      "communityDeposit",
+                      e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value) || 0)
+                    )
+                  }
+                  className="input-field"
+                />
+                <p className="text-[11px] text-wood-500 mt-1.5 px-1">
+                  借用时需要支付的押金，0 表示无需押金
+                </p>
+              </div>
+
+              <div>
+                <label className="input-label">最长借用天数</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.communityMaxDays ?? 7}
+                  onChange={(e) =>
+                    updateField(
+                      "communityMaxDays",
+                      e.target.value === "" ? 7 : Math.max(1, parseInt(e.target.value) || 7)
+                    )
+                  }
+                  className="input-field"
+                />
+                <p className="text-[11px] text-wood-500 mt-1.5 px-1">
+                  单次借用的最长天数限制
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 提交区 */}

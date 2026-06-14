@@ -15,6 +15,8 @@ interface ToolStore {
   deleteTool: (id: string) => boolean;
   getToolById: (id: string) => Tool | undefined;
   searchTools: (query: string, category?: string) => Tool[];
+  getCommunityAvailableTools: () => Tool[];
+  toggleCommunityAvailability: (id: string) => Tool | null;
 
   addBorrowRecord: (toolId: string, input: NewBorrowInput) => BorrowRecord | null;
   returnBorrowRecord: (toolId: string, recordId: string) => BorrowRecord | null;
@@ -32,6 +34,10 @@ function loadFromStorage(): Tool[] {
       return (parsed as Tool[]).map((t) => ({
         ...t,
         borrowRecords: t.borrowRecords ?? [],
+        availableForCommunity: t.availableForCommunity ?? false,
+        communityDescription: t.communityDescription,
+        communityDeposit: t.communityDeposit,
+        communityMaxDays: t.communityMaxDays,
       }));
     }
     return [];
@@ -75,6 +81,7 @@ export const useToolStore = create<ToolStore>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       borrowRecords: [],
+      availableForCommunity: input.availableForCommunity ?? false,
     };
     const nextTools = [newTool, ...get().tools];
     saveToStorage(nextTools);
@@ -122,6 +129,26 @@ export const useToolStore = create<ToolStore>((set, get) => ({
         t.notes.toLowerCase().includes(q)
       );
     });
+  },
+
+  getCommunityAvailableTools: () => {
+    return get().tools.filter((t) => t.availableForCommunity);
+  },
+
+  toggleCommunityAvailability: (id: string) => {
+    const { tools } = get();
+    const idx = tools.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    const updated: Tool = {
+      ...tools[idx],
+      availableForCommunity: !tools[idx].availableForCommunity,
+      updatedAt: new Date().toISOString(),
+    };
+    const nextTools = tools.slice();
+    nextTools[idx] = updated;
+    saveToStorage(nextTools);
+    set({ tools: nextTools });
+    return updated;
   },
 
   addBorrowRecord: (toolId: string, input: NewBorrowInput) => {

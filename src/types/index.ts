@@ -4,6 +4,96 @@ export type BorrowStatus = "borrowed" | "returned" | "overdue";
 export type ConsumableUnit = "piece" | "meter" | "roll" | "box" | "battery" | "packet" | "kg" | "liter" | "other";
 export type ConsumableCategory = "drill_bit" | "tape" | "battery" | "screw" | "glue" | "abrasive" | "paint" | "cleaning" | "other";
 
+export type CommunityToolStatus = "available" | "lent" | "reserved";
+export type BorrowRequestStatus = "pending" | "approved" | "rejected" | "completed" | "cancelled";
+export type CreditChangeType = "lend" | "return_on_time" | "return_overdue" | "borrow" | "damaged" | "violation";
+
+export interface CommunityUser {
+  id: string;
+  name: string;
+  avatar: string;
+  building: string;
+  unit: string;
+  roomNumber: string;
+  creditScore: number;
+  lendCount: number;
+  borrowCount: number;
+  joinedAt: string;
+}
+
+export interface CommunityTool {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerAvatar: string;
+  building: string;
+  unit: string;
+  name: string;
+  category: ToolCategory;
+  description: string;
+  emojiIcon: string;
+  images: string[];
+  status: CommunityToolStatus;
+  deposit: number;
+  maxBorrowDays: number;
+  usageNotes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BorrowRequest {
+  id: string;
+  toolId: string;
+  toolName: string;
+  toolEmoji: string;
+  requesterId: string;
+  requesterName: string;
+  requesterAvatar: string;
+  requesterBuilding: string;
+  requesterUnit: string;
+  ownerId: string;
+  ownerName: string;
+  status: BorrowRequestStatus;
+  borrowDate: string;
+  expectedReturnDate: string;
+  actualReturnDate?: string;
+  purpose: string;
+  agreementSigned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface BorrowAgreement {
+  id: string;
+  requestId: string;
+  toolName: string;
+  lenderName: string;
+  borrowerName: string;
+  borrowDate: string;
+  expectedReturnDate: string;
+  deposit: number;
+  terms: string[];
+  signedByLender: boolean;
+  signedByBorrower: boolean;
+  signedAt?: string;
+  createdAt: string;
+}
+
+export interface CreditRecord {
+  id: string;
+  userId: string;
+  type: CreditChangeType;
+  change: number;
+  description: string;
+  relatedToolId?: string;
+  relatedToolName?: string;
+  createdAt: string;
+}
+
+export type NewCommunityToolInput = Omit<CommunityTool, "id" | "status" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerAvatar" | "building" | "unit">;
+export type NewBorrowRequestInput = Omit<BorrowRequest, "id" | "status" | "createdAt" | "updatedAt" | "requesterId" | "requesterName" | "requesterAvatar" | "requesterBuilding" | "requesterUnit" | "ownerId" | "ownerName" | "agreementSigned" | "completedAt" | "toolId" | "toolName" | "toolEmoji">;
+
 export interface Tool {
   id: string;
   name: string;
@@ -19,6 +109,10 @@ export interface Tool {
   createdAt: string;
   updatedAt: string;
   borrowRecords: BorrowRecord[];
+  availableForCommunity: boolean;
+  communityDescription?: string;
+  communityDeposit?: number;
+  communityMaxDays?: number;
 }
 
 export interface BorrowRecord {
@@ -231,4 +325,60 @@ export function getTaskStatusInfo(status: TaskStatus): TaskStatusInfo {
 
 export function getTaskPriorityInfo(priority: TaskPriority): TaskPriorityInfo {
   return TASK_PRIORITY_LIST.find((p) => p.key === priority) ?? TASK_PRIORITY_LIST[1];
+}
+
+export interface CommunityToolStatusInfo {
+  key: CommunityToolStatus;
+  label: string;
+  emoji: string;
+  color: string;
+  bgColor: string;
+}
+
+export interface BorrowRequestStatusInfo {
+  key: BorrowRequestStatus;
+  label: string;
+  emoji: string;
+  color: string;
+  bgColor: string;
+}
+
+export const COMMUNITY_TOOL_STATUS_LIST: CommunityToolStatusInfo[] = [
+  { key: "available", label: "可借用", emoji: "✅", color: "text-status-good", bgColor: "bg-status-good/15" },
+  { key: "reserved", label: "已预约", emoji: "⏳", color: "text-status-warning", bgColor: "bg-status-warning/15" },
+  { key: "lent", label: "借出中", emoji: "📤", color: "text-borrow", bgColor: "bg-borrow/15" },
+];
+
+export const BORROW_REQUEST_STATUS_LIST: BorrowRequestStatusInfo[] = [
+  { key: "pending", label: "等待审核", emoji: "⏳", color: "text-status-warning", bgColor: "bg-status-warning/15" },
+  { key: "approved", label: "已同意", emoji: "✅", color: "text-status-good", bgColor: "bg-status-good/15" },
+  { key: "rejected", label: "已拒绝", emoji: "❌", color: "text-status-alert", bgColor: "bg-status-alert/15" },
+  { key: "completed", label: "已完成", emoji: "🎉", color: "text-steel-600", bgColor: "bg-steel-200" },
+  { key: "cancelled", label: "已取消", emoji: "🚫", color: "text-wood-500", bgColor: "bg-wood-100" },
+];
+
+export function getCommunityToolStatusInfo(status: CommunityToolStatus): CommunityToolStatusInfo {
+  return COMMUNITY_TOOL_STATUS_LIST.find((s) => s.key === status) ?? COMMUNITY_TOOL_STATUS_LIST[0];
+}
+
+export function getBorrowRequestStatusInfo(status: BorrowRequestStatus): BorrowRequestStatusInfo {
+  return BORROW_REQUEST_STATUS_LIST.find((s) => s.key === status) ?? BORROW_REQUEST_STATUS_LIST[0];
+}
+
+export const DEFAULT_BORROW_AGREEMENT_TERMS: string[] = [
+  "借用人应妥善保管借用工具，不得转借他人或用于违法用途",
+  "借用人应按约定日期归还工具，如需延期请提前与出借人协商",
+  "归还时工具应保持借出时的完好状态，如有损坏需照价赔偿",
+  "借用期间工具如发生故障或损坏，借用人应及时通知出借人",
+  "押金在工具完好归还时全额退还，如有损坏将从押金中扣除相应费用",
+  "双方应本着邻里互助、友好协商的原则解决借用过程中的问题",
+];
+
+export function getCreditLevel(score: number): { label: string; color: string; emoji: string } {
+  if (score >= 950) return { label: "极佳", color: "text-status-good", emoji: "🌟" };
+  if (score >= 900) return { label: "优秀", color: "text-status-good", emoji: "👏" };
+  if (score >= 800) return { label: "良好", color: "text-safety-orange", emoji: "👍" };
+  if (score >= 700) return { label: "一般", color: "text-status-warning", emoji: "😊" };
+  if (score >= 600) return { label: "有待提升", color: "text-status-warning", emoji: "💪" };
+  return { label: "信用较低", color: "text-status-alert", emoji: "⚠️" };
 }
