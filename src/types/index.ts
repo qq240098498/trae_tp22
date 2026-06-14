@@ -146,3 +146,89 @@ export function getConsumableUnitInfo(unit: ConsumableUnit): ConsumableUnitInfo 
 export function isLowStock(consumable: Consumable): boolean {
   return consumable.currentStock <= consumable.minStockThreshold;
 }
+
+export type TaskStatus = "pending" | "in_progress" | "resolved";
+export type TaskPriority = "low" | "medium" | "high";
+
+export interface TaskToolItem {
+  toolId: string;
+  toolName: string;
+  emojiIcon: string;
+  quantity: number;
+}
+
+export interface TaskConsumableItem {
+  consumableId: string;
+  consumableName: string;
+  emojiIcon: string;
+  quantity: number;
+  unit: ConsumableUnit;
+}
+
+export interface MaintenanceTask {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  timeSpentMinutes?: number;
+  resolutionNotes?: string;
+  tools: TaskToolItem[];
+  consumables: TaskConsumableItem[];
+  emojiIcon: string;
+}
+
+export type NewMaintenanceTaskInput = Omit<
+  MaintenanceTask,
+  "id" | "createdAt" | "updatedAt" | "status"
+>;
+
+export type ResolveTaskInput = {
+  timeSpentMinutes: number;
+  resolutionNotes?: string;
+};
+
+export interface TaskStatusInfo {
+  key: TaskStatus;
+  label: string;
+  emoji: string;
+  color: string;
+  bgColor: string;
+}
+
+export interface TaskPriorityInfo {
+  key: TaskPriority;
+  label: string;
+  emoji: string;
+  color: string;
+  bgColor: string;
+}
+
+export const TASK_STATUS_LIST: TaskStatusInfo[] = [
+  { key: "pending", label: "待处理", emoji: "📋", color: "text-steel-600", bgColor: "bg-steel-200" },
+  { key: "in_progress", label: "进行中", emoji: "🔧", color: "text-safety-orangeDark", bgColor: "bg-safety-orange/15" },
+  { key: "resolved", label: "已解决", emoji: "✅", color: "text-status-good", bgColor: "bg-status-good/15" },
+];
+
+export const TASK_PRIORITY_LIST: TaskPriorityInfo[] = [
+  { key: "low", label: "低", emoji: "🟢", color: "text-status-good", bgColor: "bg-status-good/15" },
+  { key: "medium", label: "中", emoji: "🟡", color: "text-status-warning", bgColor: "bg-status-warning/15" },
+  { key: "high", label: "高", emoji: "🔴", color: "text-status-alert", bgColor: "bg-status-alert/15" },
+];
+
+export const TASK_EMOJI_OPTIONS = [
+  "🔧", "🔨", "⚡", "🪛", "🪚", "🔌", "💡", "🚿",
+  "🪠", "🔩", "🧹", "🖌️", "🛠️", "🪓", "🔦", "🧰",
+  "📋", "🏠", "🚪", "🪟", "💧", "🔥", "❄️", "🌡️",
+];
+
+export function getTaskStatusInfo(status: TaskStatus): TaskStatusInfo {
+  return TASK_STATUS_LIST.find((s) => s.key === status) ?? TASK_STATUS_LIST[0];
+}
+
+export function getTaskPriorityInfo(priority: TaskPriority): TaskPriorityInfo {
+  return TASK_PRIORITY_LIST.find((p) => p.key === priority) ?? TASK_PRIORITY_LIST[1];
+}

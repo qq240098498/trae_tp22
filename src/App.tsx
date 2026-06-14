@@ -6,17 +6,23 @@ import ToolDetailPage from "@/pages/ToolDetailPage";
 import ConsumableListPage from "@/pages/ConsumableListPage";
 import ConsumableFormPage from "@/pages/ConsumableFormPage";
 import ConsumableDetailPage from "@/pages/ConsumableDetailPage";
+import TaskListPage from "@/pages/TaskListPage";
+import TaskFormPage from "@/pages/TaskFormPage";
+import TaskDetailPage from "@/pages/TaskDetailPage";
 import { useToolStore } from "@/store/toolStore";
 import { useConsumableStore } from "@/store/consumableStore";
+import { useMaintenanceStore } from "@/store/maintenanceStore";
 
 export default function App() {
   const hydrateTools = useToolStore((s) => s.hydrate);
   const updateBorrowStatuses = useToolStore((s) => s.updateBorrowStatuses);
   const hydrateConsumables = useConsumableStore((s) => s.hydrate);
+  const hydrateTasks = useMaintenanceStore((s) => s.hydrate);
 
   useEffect(() => {
     hydrateTools();
     hydrateConsumables();
+    hydrateTasks();
     updateBorrowStatuses();
 
     const timer = setInterval(() => {
@@ -24,7 +30,7 @@ export default function App() {
     }, 60000);
 
     return () => clearInterval(timer);
-  }, [hydrateTools, hydrateConsumables, updateBorrowStatuses]);
+  }, [hydrateTools, hydrateConsumables, hydrateTasks, updateBorrowStatuses]);
 
   return (
     <Router>
@@ -38,6 +44,11 @@ export default function App() {
         <Route path="/consumable/new" element={<ConsumableFormPage />} />
         <Route path="/consumable/:id" element={<ConsumableDetailPage />} />
         <Route path="/consumable/:id/edit" element={<ConsumableFormPage />} />
+
+        <Route path="/tasks" element={<TaskListPage />} />
+        <Route path="/task/new" element={<TaskFormPage />} />
+        <Route path="/task/:id" element={<TaskDetailPage />} />
+        <Route path="/task/:id/edit" element={<TaskFormPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

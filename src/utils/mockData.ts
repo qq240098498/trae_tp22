@@ -1,4 +1,15 @@
-import type { NewToolInput, Tool, NewConsumableInput, Consumable } from "@/types";
+import type {
+  NewToolInput,
+  Tool,
+  NewConsumableInput,
+  Consumable,
+  NewMaintenanceTaskInput,
+  MaintenanceTask,
+  TaskPriority,
+  TaskStatus,
+  TaskToolItem,
+  TaskConsumableItem,
+} from "@/types";
 import { generateId, formatDateInput } from "./format";
 
 const now = new Date();
@@ -238,6 +249,108 @@ export function createInitialConsumables(): Consumable[] {
       createdAt: created.toISOString(),
       updatedAt: created.toISOString(),
       usageRecords: [],
+    };
+  });
+}
+
+const INITIAL_TASKS_INPUT: (NewMaintenanceTaskInput & {
+  status?: TaskStatus;
+  resolvedAt?: string;
+  timeSpentMinutes?: number;
+  resolutionNotes?: string;
+})[] = [
+  {
+    title: "客厅吸顶灯更换灯泡",
+    description: "客厅主灯有两个灯泡不亮了，需要拆下灯罩更换新的LED灯泡。",
+    priority: "medium",
+    emojiIcon: "💡",
+    tools: [
+      { toolId: "mock_tool_ladder", toolName: "人字梯", emojiIcon: "🪜", quantity: 1 },
+      { toolId: "mock_tool_screwdriver_set", toolName: "十字螺丝刀套装", emojiIcon: "🪛", quantity: 1 },
+    ],
+    consumables: [
+      { consumableId: "mock_battery_5", consumableName: "5号电池", emojiIcon: "🔋", quantity: 2, unit: "battery" },
+    ],
+  },
+  {
+    title: "卫生间水龙头漏水维修",
+    description: "洗手池冷热水龙头关闭后仍有水滴渗漏，需要拆开检查阀芯，可能需要更换密封圈或整个阀芯。",
+    priority: "high",
+    emojiIcon: "🚿",
+    tools: [
+      { toolId: "mock_tool_wrench", toolName: "活动扳手", emojiIcon: "🔧", quantity: 2 },
+      { toolId: "mock_tool_screwdriver_set", toolName: "十字螺丝刀套装", emojiIcon: "🪛", quantity: 1 },
+    ],
+    consumables: [
+      { consumableId: "mock_tape_electrical", consumableName: "电工胶带", emojiIcon: "🩹", quantity: 1, unit: "meter" },
+    ],
+    status: "in_progress",
+  },
+  {
+    title: "书桌抽屉滑轨修复",
+    description: "大抽屉拉出时卡顿，滑轨生锈，需拆下清理并涂润滑油，检查滑轮是否损坏。",
+    priority: "low",
+    emojiIcon: "🗄️",
+    tools: [
+      { toolId: "mock_tool_screwdriver_set", toolName: "十字螺丝刀套装", emojiIcon: "🪛", quantity: 1 },
+    ],
+    consumables: [
+      { consumableId: "mock_screw_cross", consumableName: "十字螺丝", emojiIcon: "⚙️", quantity: 8, unit: "piece" },
+      { consumableId: "mock_glue_502", consumableName: "502胶水", emojiIcon: "🧴", quantity: 1, unit: "piece" },
+    ],
+    status: "resolved",
+    resolvedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    timeSpentMinutes: 45,
+    resolutionNotes: "拆下滑轨用砂纸打磨除锈，涂抹了少量润滑油。更换了2颗松动的螺丝，抽屉开关恢复顺畅。下次类似问题建议先检查螺丝松紧。",
+  },
+  {
+    title: "阳台晾衣架钢丝绳更换",
+    description: "升降晾衣架钢丝绳磨损严重，有毛刺，需要整根更换避免断裂。",
+    priority: "medium",
+    emojiIcon: "🧵",
+    tools: [
+      { toolId: "mock_tool_ladder", toolName: "人字梯", emojiIcon: "🪜", quantity: 1 },
+      { toolId: "mock_tool_wrench", toolName: "活动扳手", emojiIcon: "🔧", quantity: 1 },
+      { toolId: "mock_tool_hammer", toolName: "羊角锤", emojiIcon: "🔨", quantity: 1 },
+    ],
+    consumables: [
+      { consumableId: "mock_tape_foam", consumableName: "双面泡沫胶", emojiIcon: "📦", quantity: 1, unit: "meter" },
+    ],
+  },
+  {
+    title: "厨房吊柜重新固定",
+    description: "吊柜与墙面连接处松动，开门时晃动明显，需要重新加固膨胀螺丝。",
+    priority: "high",
+    emojiIcon: "🚪",
+    tools: [
+      { toolId: "mock_tool_drill", toolName: "充电式电钻", emojiIcon: "⚡", quantity: 1 },
+      { toolId: "mock_tool_ladder", toolName: "人字梯", emojiIcon: "🪜", quantity: 1 },
+    ],
+    consumables: [
+      { consumableId: "mock_screw_cross", consumableName: "十字螺丝", emojiIcon: "⚙️", quantity: 12, unit: "piece" },
+      { consumableId: "mock_drill_bit", consumableName: "电钻钻头", emojiIcon: "🔩", quantity: 2, unit: "piece" },
+    ],
+    status: "resolved",
+    resolvedAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    timeSpentMinutes: 90,
+    resolutionNotes: "拆下原有螺丝重新钻孔，使用加长膨胀螺丝固定，共加固4个吊点。建议使用8mm以上钻头配合膨胀管，承重更稳固。",
+  },
+];
+
+export function createInitialTasks(): MaintenanceTask[] {
+  return INITIAL_TASKS_INPUT.map((input, index) => {
+    const created = new Date(now);
+    created.setDate(created.getDate() - (30 - index * 4));
+    const { status, resolvedAt, timeSpentMinutes, resolutionNotes, ...rest } = input;
+    return {
+      ...rest,
+      id: generateId(),
+      status: (status ?? "pending") as TaskStatus,
+      createdAt: created.toISOString(),
+      updatedAt: created.toISOString(),
+      resolvedAt,
+      timeSpentMinutes,
+      resolutionNotes,
     };
   });
 }

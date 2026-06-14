@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { PackagePlus, ArrowLeft, Wrench, Package } from "lucide-react";
+import { PackagePlus, ArrowLeft, Wrench, Package, ClipboardList } from "lucide-react";
 import { classNames } from "@/utils/format";
 import { useConsumableStore } from "@/store/consumableStore";
+import { useMaintenanceStore } from "@/store/maintenanceStore";
 
 
 interface HeaderProps {
@@ -17,16 +18,23 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
     pathname === "/" || pathname.startsWith("/tool");
   const isConsumableRoute =
     pathname.startsWith("/consumable") || pathname === "/consumables";
+  const isTaskRoute =
+    pathname.startsWith("/task") || pathname === "/tasks";
   const isConsumableList = pathname === "/consumables";
-  const isHome = (pathname === "/" || pathname === "/consumables") && !showBack;
+  const isTaskList = pathname === "/tasks";
+  const isHome = (pathname === "/" || pathname === "/consumables" || pathname === "/tasks") && !showBack;
 
   const displayTitle = title ?? "家庭工具箱";
 
   const lowStockCount = useConsumableStore((s) => s.getLowStockConsumables().length);
-  const hydrate = useConsumableStore((s) => s.hydrate);
-  hydrate();
+  const hydrateConsumables = useConsumableStore((s) => s.hydrate);
+  hydrateConsumables();
 
-  const backTo = isConsumableRoute ? "/consumables" : "/";
+  const pendingTaskCount = useMaintenanceStore((s) => s.getPendingTasks().length + s.getInProgressTasks().length);
+  const hydrateTasks = useMaintenanceStore((s) => s.hydrate);
+  hydrateTasks();
+
+  const backTo = isTaskRoute ? "/tasks" : isConsumableRoute ? "/consumables" : "/";
 
   return (
     <header className="sticky top-0 z-40 border-b border-wood-300/50 backdrop-blur-md bg-wood-900/92 text-wood-50 shadow-lg">
@@ -76,11 +84,18 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
                   <span className="sm:hidden">新增</span>
                 </Link>
               )}
+              {isTaskList && (
+                <Link to="/task/new" className="btn-primary !py-2.5 !px-4 sm:!px-5 min-h-[44px]">
+                  <PackagePlus size={18} strokeWidth={2.2} />
+                  <span className="hidden sm:inline">新建任务</span>
+                  <span className="sm:hidden">新增</span>
+                </Link>
+              )}
             </div>
           </div>
 
           {/* 模块导航 Tab - 仅在列表页（非详情/非编辑页）显示 */}
-          {(pathname === "/" || pathname === "/consumables") && !showBack && (
+          {(pathname === "/" || pathname === "/consumables" || pathname === "/tasks") && !showBack && (
             <nav className="flex gap-1 pb-3 -mt-1">
               <Link
                 to="/"
@@ -108,6 +123,23 @@ export default function Header({ title, showBack, actions }: HeaderProps) {
                 {lowStockCount > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-status-alert text-white text-[11px] font-bold animate-pulse-subtle">
                     {lowStockCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to="/tasks"
+                className={classNames(
+                  "relative flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-medium transition-all",
+                  isTaskRoute
+                    ? "bg-white/15 text-white shadow-sm"
+                    : "text-wood-300/70 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <ClipboardList size={16} strokeWidth={2.2} />
+                维修任务
+                {pendingTaskCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-safety-orange text-white text-[11px] font-bold animate-pulse-subtle">
+                    {pendingTaskCount}
                   </span>
                 )}
               </Link>
