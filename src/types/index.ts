@@ -1,5 +1,6 @@
 export type ToolCategory = "manual" | "electric" | "consumable" | "other";
 export type MaintenanceType = "charge" | "battery" | "none";
+export type BorrowStatus = "borrowed" | "returned" | "overdue";
 
 export interface Tool {
   id: string;
@@ -15,9 +16,23 @@ export interface Tool {
   emojiIcon: string;
   createdAt: string;
   updatedAt: string;
+  borrowRecords: BorrowRecord[];
 }
 
-export type NewToolInput = Omit<Tool, "id" | "createdAt" | "updatedAt">;
+export interface BorrowRecord {
+  id: string;
+  borrowerName: string;
+  borrowDate: string;
+  expectedReturnDate: string;
+  actualReturnDate?: string;
+  status: BorrowStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NewToolInput = Omit<Tool, "id" | "createdAt" | "updatedAt" | "borrowRecords">;
+export type NewBorrowInput = Omit<BorrowRecord, "id" | "status" | "createdAt" | "updatedAt">;
 
 export interface CategoryInfo {
   key: ToolCategory;

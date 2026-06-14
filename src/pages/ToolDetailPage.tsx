@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Pencil,
@@ -11,12 +11,17 @@ import {
   Battery,
   FileText,
   AlertTriangle,
+  UserCheck,
+  RotateCcw,
+  Plus,
+  Clock,
+  History,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import ImageCarousel from "@/components/tool/ImageCarousel";
 import { useToolStore } from "@/store/toolStore";
 import { getCategoryInfo } from "@/types";
-import { formatDate, daysSince } from "@/utils/format";
+import { formatDate, daysSince, formatDateInput, classNames } from "@/utils/format";
 
 interface InfoItemProps {
   icon: LucideIcon;
@@ -59,13 +64,36 @@ export default function ToolDetailPage() {
   const hydrate = useToolStore((s) => s.hydrate);
   const getToolById = useToolStore((s) => s.getToolById);
   const deleteTool = useToolStore((s) => s.deleteTool);
+  const addBorrowRecord = useToolStore((s) => s.addBorrowRecord);
+  const returnBorrowRecord = useToolStore((s) => s.returnBorrowRecord);
+  const getActiveBorrowRecord = useToolStore((s) => s.getActiveBorrowRecord);
+  const updateBorrowStatuses = useToolStore((s) => s.updateBorrowStatuses);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showBorrowForm, setShowBorrowForm] = useState(false);
+  const [showReturnConfirm, setShowReturnConfirm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [returning, setReturning] = useState(false);
+
+  const [borrowerName, setBorrowerName] = useState("");
+  const [borrowDate, setBorrowDate] = useState(formatDateInput());
+  const [expectedReturnDate, setExpectedReturnDate] = useState("");
+  const [borrowNotes, setBorrowNotes] = useState("");
 
   hydrate();
 
+  useEffect(() => {
+    updateBorrowStatuses();
+  }, [updateBorrowStatuses]);
+
   const tool = id ? getToolById(id) : undefined;
+  const activeBorrow = tool ? getActiveBorrowRecord(tool.id) : undefined;
+  const isBorrowed = !!activeBorrow;
+  const isOverdue = activeBorrow?.status === "overdue";
+  const overdueDays = activeBorrow
+    ? Math.max(0, daysSince(activeBorrow.expectedReturnDate) || 0)
+    : 0;
 
   if (!tool) {
     return (
@@ -97,6 +125,39 @@ export default function ToolDetailPage() {
       navigate("/", { replace: true });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function openBorrowForm() {
+    setBorrowerName("");
+    setBorrowDate(formatDateInput());
+    setExpectedReturnDate("");
+    setBorrowNotes("");
+    setShowBorrowForm(true);
+  }
+
+  function handleBorrowSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!borrowerName.trim() || !expectedReturnDate) return;
+
+    addBorrowRecord(tool.id, {
+      borrowerName: borrowerName.trim(),
+      borrowDate,
+      expectedReturnDate,
+      notes: borrowNotes.trim() || undefined,
+    });
+
+    setShowBorrowForm(false);
+  }
+
+  async function handleReturn() {
+    if (!activeBorrow) return;
+    setReturning(true);
+    try {
+      returnBorrowRecord(tool.id, activeBorrow.id);
+      setShowReturnConfirm(false);
+    } finally {
+      setReturning(false);
     }
   }
 
@@ -162,6 +223,19 @@ export default function ToolDetailPage() {
                     <span className="tag bg-wood-800 text-wood-50 text-sm !px-3 !py-1.5">
                       <Layers size={14} strokeWidth={2.5} />
                       共 {tool.quantity} 件
+                    </span>
+                  )}
+                  {isBorrowed && (
+                    <span
+                      className={classNames(
+                        "tag text-sm !px-3 !py-1.5 flex items-center gap-1.5",
+                        isOverdue
+                          ? "bg-status-alert/15 text-status-alert animate-pulse-subtle"
+                          : "bg-borrow/15 text-borrow"
+                      )}
+                    >
+                      {isOverdue ? <Clock size={14} strokeWidth={2.2} /> : <UserCheck size={14} strokeWidth={2.2} />}
+                      {isOverdue ? "逾期未还" : "外借中"}
                     </span>
                   )}
                   {needsAttention && (
@@ -244,6 +318,147 @@ export default function ToolDetailPage() {
           />
         </section>
 
+        {/* 借用状态 */}
+        <section className="card p-5 sm:p-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-title !mb-0">
+              <UserCheck size={20} strokeWidth={2.2} />
+              借用登记
+            </h2>
+            {tool.borrowRecords && tool.borrowRecords.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className="text-sm text-wood-500 hover:text-wood-700 flex items-center gap-1 transition-colors"
+              >
+                <History size={14} strokeWidth={2} />
+                {showHistory ? "收起历史" : "查看历史"}
+              </button>
+            )}
+          </div>
+
+          {isBorrowed && activeBorrow ? (
+            <div
+              className={classNames(
+                "p-4 rounded-xl border-2 mb-4",
+                isOverdue
+                  ? "bg-status-alert/8 border-status-alert/30"
+                  : "bg-borrow/8 border-borrow/30"
+              )}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={classNames(
+                      "shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
+                      isOverdue ? "bg-status-alert/15 text-status-alert" : "bg-borrow/15 text-borrow"
+                    )}
+                  >
+                    {isOverdue ? <Clock size={18} strokeWidth={2.2} /> : <UserCheck size={18} strokeWidth={2.2} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-display text-lg text-wood-900 mb-1">
+                      {activeBorrow.borrowerName}
+                      <span className="ml-2 text-sm font-normal text-wood-500">正在借用</span>
+                    </p>
+                    <div className="space-y-1 text-sm">
+                      <p className="text-wood-600">
+                        <span className="text-wood-400">借用日期：</span>
+                        {formatDate(activeBorrow.borrowDate)}
+                      </p>
+                      <p className={classNames("font-medium", isOverdue ? "text-status-alert" : "text-wood-600")}>
+                        <span className="text-wood-400 font-normal">预计归还：</span>
+                        {formatDate(activeBorrow.expectedReturnDate)}
+                        {isOverdue && <span className="ml-2">（逾期 {overdueDays} 天）</span>}
+                      </p>
+                      {activeBorrow.notes && (
+                        <p className="text-wood-500 text-xs mt-2">
+                          备注：{activeBorrow.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowReturnConfirm(true)}
+                  className="btn-primary !bg-status-good !text-white border-status-good hover:bg-status-good/90 !py-2 !px-4"
+                >
+                  <RotateCcw size={16} strokeWidth={2.2} />
+                  确认归还
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-wood-400">
+              <UserCheck size={36} strokeWidth={1.5} className="mx-auto mb-2 opacity-40" />
+              <p>当前未借出</p>
+            </div>
+          )}
+
+          {!isBorrowed && (
+            <button
+              type="button"
+              onClick={openBorrowForm}
+              className="w-full btn-secondary flex items-center justify-center gap-2 !py-3"
+            >
+              <Plus size={18} strokeWidth={2.2} />
+              登记借用
+            </button>
+          )}
+
+          {/* 借用历史 */}
+          {showHistory && tool.borrowRecords && tool.borrowRecords.length > 0 && (
+            <div className="mt-4 border-t border-wood-200/60 pt-4 space-y-3">
+              <h3 className="text-sm font-semibold text-wood-600 mb-3">借用历史</h3>
+              {tool.borrowRecords.map((record) => (
+                <div
+                  key={record.id}
+                  className={classNames(
+                    "p-3 rounded-lg border text-sm",
+                    record.status === "returned"
+                      ? "bg-wood-50 border-wood-200/60"
+                      : record.status === "overdue"
+                      ? "bg-status-alert/5 border-status-alert/20"
+                      : "bg-borrow/5 border-borrow/20"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-wood-800">{record.borrowerName}</span>
+                    <span
+                      className={classNames(
+                        "text-xs px-2 py-0.5 rounded-full",
+                        record.status === "returned"
+                          ? "bg-status-good/15 text-status-good"
+                          : record.status === "overdue"
+                          ? "bg-status-alert/15 text-status-alert"
+                          : "bg-borrow/15 text-borrow"
+                      )}
+                    >
+                      {record.status === "returned"
+                        ? "已归还"
+                        : record.status === "overdue"
+                        ? "逾期中"
+                        : "借用中"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-wood-500">
+                    {formatDate(record.borrowDate)} →{" "}
+                    {record.actualReturnDate
+                      ? formatDate(record.actualReturnDate)
+                      : `预计 ${formatDate(record.expectedReturnDate)}`}
+                  </p>
+                  {record.notes && (
+                    <p className="text-xs text-wood-400 mt-1">备注：{record.notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* 备注 */}
         {tool.notes && (
           <section className="card p-5 sm:p-6 animate-fade-in">
@@ -318,6 +533,146 @@ export default function ToolDetailPage() {
                 className="btn-danger !bg-status-alert !text-white border-status-alert hover:bg-status-alert/90 disabled:opacity-60"
               >
                 {deleting ? "删除中..." : "确认删除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 借用登记弹窗 */}
+      {showBorrowForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-wood-950/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowBorrowForm(false)}
+        >
+          <div
+            className="card w-full max-w-md p-6 sm:p-7 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 mb-5">
+              <div className="shrink-0 w-14 h-14 rounded-2xl bg-borrow/15 flex items-center justify-center">
+                <UserCheck size={26} className="text-borrow" strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-display text-xl text-wood-900 mb-1">登记借用</h3>
+                <p className="text-sm text-wood-500 leading-relaxed">
+                  记录借用信息，便于追踪和催还
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleBorrowSubmit} className="space-y-4">
+              <div>
+                <label className="input-label">
+                  借用人 <span className="text-status-alert">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={borrowerName}
+                  onChange={(e) => setBorrowerName(e.target.value)}
+                  placeholder="如：张三、邻居李阿姨"
+                  className="input-field w-full"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="input-label">借用日期</label>
+                  <input
+                    type="date"
+                    value={borrowDate}
+                    onChange={(e) => setBorrowDate(e.target.value)}
+                    className="input-field w-full"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="input-label">
+                    预计归还 <span className="text-status-alert">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={expectedReturnDate}
+                    onChange={(e) => setExpectedReturnDate(e.target.value)}
+                    className="input-field w-full"
+                    min={borrowDate}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label">备注说明</label>
+                <textarea
+                  value={borrowNotes}
+                  onChange={(e) => setBorrowNotes(e.target.value)}
+                  placeholder="可选，如借用用途、注意事项等"
+                  className="input-field w-full min-h-[80px] resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBorrowForm(false)}
+                  className="btn-secondary"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={!borrowerName.trim() || !expectedReturnDate}
+                  className="btn-primary !bg-borrow !text-white border-borrow hover:bg-borrow/90 disabled:opacity-60"
+                >
+                  确认登记
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 归还确认弹窗 */}
+      {showReturnConfirm && activeBorrow && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-wood-950/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => !returning && setShowReturnConfirm(false)}
+        >
+          <div
+            className="card w-full max-w-md p-6 sm:p-7 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 mb-5">
+              <div className="shrink-0 w-14 h-14 rounded-2xl bg-status-good/15 flex items-center justify-center">
+                <RotateCcw size={26} className="text-status-good" strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-display text-xl text-wood-900 mb-1">确认归还？</h3>
+                <p className="text-sm text-wood-500 leading-relaxed">
+                  确认 <span className="font-bold text-wood-800">{activeBorrow.borrowerName}</span>{" "}
+                  已归还「{tool.name}」？
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowReturnConfirm(false)}
+                disabled={returning}
+                className="btn-secondary"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleReturn}
+                disabled={returning}
+                className="btn-primary !bg-status-good !text-white border-status-good hover:bg-status-good/90 disabled:opacity-60"
+              >
+                {returning ? "处理中..." : "确认归还"}
               </button>
             </div>
           </div>

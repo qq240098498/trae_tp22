@@ -1,9 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useToolStore } from "@/store/toolStore";
-import { Package, Zap, MapPin, Sparkles } from "lucide-react";
+import { Package, Zap, MapPin, Sparkles, Clock, UserCheck } from "lucide-react";
 
 export default function StatsBar() {
   const tools = useToolStore((s) => s.tools);
+  const updateBorrowStatuses = useToolStore((s) => s.updateBorrowStatuses);
+
+  useEffect(() => {
+    updateBorrowStatuses();
+  }, [updateBorrowStatuses]);
 
   const stats = useMemo(() => {
     const total = tools.length;
@@ -16,7 +21,17 @@ export default function StatsBar() {
       const now = new Date();
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).length;
-    return { total, needCharge, uniqueLocations, thisMonth };
+
+    let borrowed = 0;
+    let overdue = 0;
+    tools.forEach((tool) => {
+      tool.borrowRecords?.forEach((record) => {
+        if (record.status === "borrowed") borrowed++;
+        if (record.status === "overdue") overdue++;
+      });
+    });
+
+    return { total, needCharge, uniqueLocations, thisMonth, borrowed, overdue };
   }, [tools]);
 
   const items = [
@@ -27,6 +42,28 @@ export default function StatsBar() {
       icon: Package,
       color: "from-safety-orange/20 to-safety-orange/5 text-safety-orange",
       ring: "ring-safety-orange/20",
+    },
+    {
+      label: "外借中",
+      value: stats.borrowed + stats.overdue,
+      unit: "件",
+      icon: UserCheck,
+      color:
+        stats.borrowed + stats.overdue > 0
+          ? "from-borrow/20 to-borrow/5 text-borrow"
+          : "from-status-good/20 to-status-good/5 text-status-good",
+      ring: stats.borrowed + stats.overdue > 0 ? "ring-borrow/20" : "ring-status-good/20",
+    },
+    {
+      label: "逾期未还",
+      value: stats.overdue,
+      unit: "件",
+      icon: Clock,
+      color:
+        stats.overdue > 0
+          ? "from-status-alert/20 to-status-alert/5 text-status-alert"
+          : "from-status-good/20 to-status-good/5 text-status-good",
+      ring: stats.overdue > 0 ? "ring-status-alert/20" : "ring-status-good/20",
     },
     {
       label: "需维护",
@@ -58,7 +95,7 @@ export default function StatsBar() {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
       {items.map(({ label, value, unit, icon: Icon, color, ring }) => (
         <div
           key={label}

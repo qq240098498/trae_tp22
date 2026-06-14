@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
-import { MapPin, Layers } from "lucide-react";
+import { MapPin, Layers, UserCheck, Clock } from "lucide-react";
 import type { Tool } from "@/types";
 import { getCategoryInfo } from "@/types";
-import { classNames } from "@/utils/format";
+import { classNames, daysSince } from "@/utils/format";
+import { useToolStore } from "@/store/toolStore";
+import { useEffect } from "react";
 
 interface ToolCardProps {
   tool: Tool;
@@ -14,6 +16,19 @@ export default function ToolCard({ tool, index = 0 }: ToolCardProps) {
   const needAttention = tool.needsMaintenance && tool.maintenanceType !== "none";
   const firstImage = tool.images[0];
   const delay = Math.min(index * 40, 400);
+  const updateBorrowStatuses = useToolStore((s) => s.updateBorrowStatuses);
+  const getActiveBorrowRecord = useToolStore((s) => s.getActiveBorrowRecord);
+
+  useEffect(() => {
+    updateBorrowStatuses();
+  }, [updateBorrowStatuses]);
+
+  const activeBorrow = getActiveBorrowRecord(tool.id);
+  const isBorrowed = !!activeBorrow;
+  const isOverdue = activeBorrow?.status === "overdue";
+  const overdueDays = activeBorrow
+    ? Math.max(0, daysSince(activeBorrow.expectedReturnDate) || 0)
+    : 0;
 
   return (
     <Link
@@ -53,6 +68,19 @@ export default function ToolCard({ tool, index = 0 }: ToolCardProps) {
               <span>{catInfo.emoji}</span>
               {catInfo.label}
             </span>
+            {isBorrowed && (
+              <span
+                className={classNames(
+                  "tag flex items-center gap-1",
+                  isOverdue
+                    ? "bg-status-alert/15 text-status-alert animate-pulse-subtle"
+                    : "bg-borrow/15 text-borrow"
+                )}
+              >
+                {isOverdue ? <Clock size={12} /> : <UserCheck size={12} />}
+                {isOverdue ? "逾期未还" : "外借中"}
+              </span>
+            )}
             {needAttention && (
               <span className="tag bg-status-alert/15 text-status-alert animate-pulse-subtle">
                 {tool.maintenanceType === "charge" ? "需充电" : "换电池"}
@@ -85,13 +113,30 @@ export default function ToolCard({ tool, index = 0 }: ToolCardProps) {
 
         <div className="flex items-center justify-between pt-2">
           <span className="text-[11px] text-wood-400 font-medium">
-            查看详情 →
+            {isBorrowed ? (
+              <span className="flex items-center gap-1">
+                <UserCheck size={11} />
+                {activeBorrow?.borrowerName} 借用
+                {isOverdue && <span className="text-status-alert font-bold">· 逾期{overdueDays}天</span>}
+              </span>
+            ) : (
+              "查看详情 →"
+            )}
           </span>
           <span
-            className={`shrink-0 w-2.5 h-2.5 rounded-full ${
-              needAttention ? "bg-status-alert animate-pulse-subtle" : "bg-status-good"
-            } shadow-sm`}
-            aria-label={needAttention ? "需要关注" : "状态正常"}
+            className={classNames(
+              "shrink-0 w-2.5 h-2.5 rounded-full shadow-sm",
+              isOverdue
+                ? "bg-status-alert animate-pulse-subtle"
+                : isBorrowed
+                ? "bg-borrow animate-pulse-subtle"
+                : needAttention
+                ? "bg-status-alert animate-pulse-subtle"
+                : "bg-status-good"
+            )}
+            aria-label={
+              isOverdue ? "逾期未还" : isBorrowed ? "外借中" : needAttention ? "需要关注" : "状态正常"
+            }
           />
         </div>
       </div>

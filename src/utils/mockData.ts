@@ -116,6 +116,7 @@ export function createInitialTools(): Tool[] {
       id: generateId(),
       createdAt: created.toISOString(),
       updatedAt: created.toISOString(),
+      borrowRecords: [],
     };
   });
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { NewToolInput, Tool } from "@/types";
+import type { NewToolInput, NewBorrowInput, Tool, BorrowRecord } from "@/types";
 import { generateId } from "@/utils/format";
 import { createInitialTools } from "@/utils/mockData";
 
@@ -15,6 +15,12 @@ interface ToolStore {
   deleteTool: (id: string) => boolean;
   getToolById: (id: string) => Tool | undefined;
   searchTools: (query: string, category?: string) => Tool[];
+
+  addBorrowRecord: (toolId: string, input: NewBorrowInput) => BorrowRecord | null;
+  returnBorrowRecord: (toolId: string, recordId: string) => BorrowRecord | null;
+  getActiveBorrowRecord: (toolId: string) => BorrowRecord | undefined;
+  getOverdueBorrows: () => { tool: Tool; record: BorrowRecord }[];
+  updateBorrowStatuses: () => void;
 }
 
 function loadFromStorage(): Tool[] {
@@ -63,6 +69,7 @@ export const useToolStore = create<ToolStore>((set, get) => ({
       id: generateId(),
       createdAt: now,
       updatedAt: now,
+      borrowRecords: [],
     };
     const nextTools = [newTool, ...get().tools];
     saveToStorage(nextTools);
@@ -110,5 +117,115 @@ export const useToolStore = create<ToolStore>((set, get) => ({
         t.notes.toLowerCase().includes(q)
       );
     });
+  },
+
+  addBorrowRecord: (toolId: string, input: NewBorrowInput) => {
+    const { tools } = get();
+    const idx = tools.findIndex((t) => t.id === toolId);
+    if (idx === -1) return null;
+
+    const now = new Date().toISOString();
+    const newRecord: BorrowRecord = {
+      ...input,
+      id: generateId(),
+      status: "borrowed",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const updatedTool: Tool = {
+      ...tools[idx],
+      borrowRecords: [newRecord, ...tools[idx].borrowRecords],
+      updatedAt: now,
+    };
+
+    const nextTools = tools.slice();
+    nextTools[idx] = updatedTool;
+    saveToStorage(nextTools);
+    set({ tools: nextTools });
+    return newRecord;
+  },
+
+  returnBorrowRecord: (toolId: string, recordId: string) => {
+    const { tools } = get();
+    const idx = tools.findIndex((t) => t.id === toolId);
+    if (idx === -1) return null;
+
+    const tool = tools[idx];
+    const recordIdx = tool.borrowRecords.findIndex((r) => r.id === recordId);
+    if (recordIdx === -1) return null;
+
+    const now = new Date().toISOString();
+    const updatedRecord: BorrowRecord = {
+      ...tool.borrowRecords[recordIdx],
+      status: "returned",
+      actualReturnDate: now,
+      updatedAt: now,
+    };
+
+    const updatedRecords = tool.borrowRecords.slice();
+    updatedRecords[recordIdx] = updatedRecord;
+
+    const updatedTool: Tool = {
+      ...tool,
+      borrowRecords: updatedRecords,
+      updatedAt: now,
+    };
+
+    const nextTools = tools.slice();
+    nextTools[idx] = updatedTool;
+    saveToStorage(nextTools);
+    set({ tools: nextTools });
+    return updatedRecord;
+  },
+
+  getActiveBorrowRecord: (toolId: string) => {
+    const tool = get().tools.find((t) => t.id === toolId);
+    if (!tool) return undefined;
+    return tool.borrowRecords.find((r) => r.status === "borrowed" || r.status === "overdue");
+  },
+
+  getOverdueBorrows: () => {
+    const { updateBorrowStatuses } = get();
+    updateBorrowStatuses();
+    const result: { tool: Tool; record: BorrowRecord }[] = [];
+    for (const tool of get().tools) {
+      for (const record of tool.borrowRecords) {
+        if (record.status === "overdue") {
+          result.push({ tool, record });
+        }
+      }
+    }
+    return result;
+  },
+
+  updateBorrowStatuses: () => {
+    const { tools } = get();
+    const now = new Date();
+    let hasChanges = false;
+
+    const nextTools = tools.map((tool) => {
+      const updatedRecords = tool.borrowRecords.map((record) => {
+        if (record.status === "borrowed") {
+          const expectedDate = new Date(record.expectedReturnDate);
+          expectedDate.setHours(23, 59, 59, 999);
+          if (now > expectedDate) {
+            hasChanges = true;
+            return { ...record, status: "overdue" as const, updatedAt: now.toISOString() };
+          }
+        }
+        return record;
+      });
+
+      if (updatedRecords.some((r, i) => r !== tool.borrowRecords[i])) {
+        return { ...tool, borrowRecords: updatedRecords, updatedAt: now.toISOString() };
+      }
+      return tool;
+    });
+
+    if (hasChanges) {
+      saveToStorage(nextTools);
+      set({ tools: nextTools });
+    }
   },
 }));

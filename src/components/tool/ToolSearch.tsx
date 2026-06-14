@@ -1,6 +1,5 @@
 import { Search, Filter, X } from "lucide-react";
 import { CATEGORY_LIST } from "@/types";
-import type { ToolCategory } from "@/types";
 
 interface ToolSearchProps {
   query: string;

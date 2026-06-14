@@ -46,6 +46,11 @@ export default {
           warning: "#F59E0B",
           alert: "#EF4444",
         },
+        borrow: {
+          DEFAULT: "#8B5CF6",
+          light: "#A78BFA",
+          dark: "#7C3AED",
+        },
       },
       fontFamily: {
         display: ['"ZCOOL KuaiLe"', '"Noto Sans SC"', "system-ui", "sans-serif"],
